@@ -32,4 +32,10 @@ Assert-Equal -Actual (Get-UiText -Key 'Missing.Key') -Expected 'Missing.Key' -Me
 Set-UiLanguage -Language 'xx-YY'
 Assert-Equal -Actual (Get-UiText -Key 'Button.Refresh') -Expected 'Refresh' -Message 'Unsupported selected language should fall back to English.'
 
+$normalized = ConvertTo-WindowsLineEnding -Text "line1`nline2"
+Assert-Equal -Actual $normalized -Expected "line1`r`nline2" -Message 'Multiline UI text should use CRLF line endings for WinForms TextBox controls.'
+
+$alreadyNormalized = ConvertTo-WindowsLineEnding -Text "line1`r`nline2"
+Assert-Equal -Actual $alreadyNormalized -Expected "line1`r`nline2" -Message 'Existing CRLF line endings should remain stable.'
+
 Write-Host 'Localization.Tests.ps1 passed'

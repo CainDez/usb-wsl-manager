@@ -165,6 +165,16 @@ function Get-UiText {
     return $text
 }
 
+function ConvertTo-WindowsLineEnding {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string] $Text
+    )
+
+    return (($Text -replace "`r`n", "`n") -replace "`r", "`n") -replace "`n", "`r`n"
+}
+
 function ConvertFrom-UsbipdListOutput {
     param(
         [Parameter(Mandatory = $true)]
@@ -610,7 +620,7 @@ function Apply-UiLanguage {
         $listView.Columns[1].Text = Get-UiText -Key 'Column.VidPid'
         $listView.Columns[2].Text = Get-UiText -Key 'Column.Device'
         $listView.Columns[3].Text = Get-UiText -Key 'Column.State'
-        $helpBox.Text = Get-UiText -Key 'Help.Text'
+        $helpBox.Text = ConvertTo-WindowsLineEnding -Text (Get-UiText -Key 'Help.Text')
 
         $languageComboBox.Items.Clear()
         [void]$languageComboBox.Items.Add((Get-UiText -Key 'Language.Chinese'))
