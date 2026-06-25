@@ -6,6 +6,7 @@ $scriptPath = Join-Path $repoRoot 'UsbWslManager.ps1'
 $env:USB_WSL_MANAGER_TEST_IMPORT = '1'
 . $scriptPath
 Remove-Item Env:\USB_WSL_MANAGER_TEST_IMPORT -ErrorAction SilentlyContinue
+Set-UiLanguage -Language 'zh-CN'
 
 function Assert-Equal {
     param(

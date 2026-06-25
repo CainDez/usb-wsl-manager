@@ -27,6 +27,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File ".\UsbWslManager.ps
 ```
 
 工具启动时会请求管理员权限，用于执行 `usbipd bind`、`usbipd unbind` 和安装操作。
+界面支持中文和英文，默认跟随系统语言，也可在窗口右上角手动切换。
 
 ## 常见流程
 
