@@ -105,3 +105,7 @@ This project does not include local usernames, absolute paths, GitHub credential
 - PowerShell 5.1 or later
 - `usbipd-win`
 - `winget`, only for the one-click `usbipd-win` installation inside the tool
+
+## License
+
+MIT License. See [LICENSE](LICENSE).

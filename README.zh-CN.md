@@ -105,3 +105,7 @@ wsl --shutdown
 - PowerShell 5.1 或更新版本
 - `usbipd-win`
 - `winget`，仅用于工具内一键安装 `usbipd-win`
+
+## 许可证
+
+MIT License。详见 [LICENSE](LICENSE)。
