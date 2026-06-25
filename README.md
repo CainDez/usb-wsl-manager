@@ -1,75 +1,77 @@
 # USB WSL Manager
 
-一个简单的 Windows PowerShell GUI 工具，用来管理 `usbipd-win`，把 Windows 上的 USB 设备共享并连接到 WSL2。
+English | [中文](README.zh-CN.md)
 
-## 功能
+A small Windows PowerShell GUI tool for managing `usbipd-win` and sharing USB devices from Windows into WSL2.
 
-- 检测并安装 `usbipd-win`
-- 获取 Windows USB 设备列表
-- 选择设备后执行 `usbipd bind` 共享
-- 执行 `usbipd unbind` 取消共享
-- 执行 `usbipd attach --wsl` 连接到 WSL
-- 执行 `usbipd detach` 从 WSL 断开
-- 内置 WSL 侧 `lsusb`、串口权限、`udev` 权限规则说明
+## Features
 
-## 使用方法
+- Detect and install `usbipd-win`
+- List Windows USB devices
+- Share selected devices with `usbipd bind`
+- Stop sharing devices with `usbipd unbind`
+- Attach devices to WSL with `usbipd attach --wsl`
+- Detach devices from WSL with `usbipd detach`
+- Built-in WSL notes for `lsusb`, serial device permissions, and `udev` rules
 
-双击运行：
+## Usage
+
+Double-click:
 
 ```text
 Run-UsbWslManager.bat
 ```
 
-或者在 PowerShell 中运行：
+Or run from PowerShell:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File ".\UsbWslManager.ps1"
 ```
 
-工具启动时会请求管理员权限，用于执行 `usbipd bind`、`usbipd unbind` 和安装操作。
-界面支持中文和英文，默认跟随系统语言，也可在窗口右上角手动切换。
+The tool requests administrator permission at startup so it can run `usbipd bind`, `usbipd unbind`, and installation commands.
+The UI supports English and Chinese. It follows the system language by default, and you can switch languages from the top-right corner of the window.
 
-## 常见流程
+## Common Workflow
 
-1. 打开工具。
-2. 如果没有安装 `usbipd-win`，点击“安装 usbipd-win”。
-3. 点击“刷新列表”。
-4. 选择目标 USB 设备。
-5. 点击“连接到 WSL”；如果设备尚未共享，工具会先自动执行 `usbipd bind`。
-6. 在 WSL 中执行 `lsusb` 确认设备可见。
+1. Open the tool.
+2. If `usbipd-win` is not installed, click "Install usbipd-win".
+3. Click "Refresh".
+4. Select the target USB device.
+5. Click "Connect to WSL"; if the device is not shared yet, the tool automatically runs `usbipd bind` first.
+6. In WSL, run `lsusb` to confirm that the device is visible.
 
-重启电脑、重启 WSL 或设备拔插后，通常只需要重新执行“连接到 WSL”。`bind` 状态一般会保留。
+After rebooting Windows, restarting WSL, or unplugging/replugging the device, you usually only need to run "Connect to WSL" again. The `bind` state is normally preserved.
 
-## WSL 权限设置
+## WSL Permission Setup
 
-如果 WSL 中 `lsusb` 能看到设备，但软件读不到，先测试：
+If `lsusb` can see the device in WSL but your software cannot access it, test with:
 
 ```bash
-sudo 你的软件命令
+sudo your-command
 ```
 
-如果 `sudo` 可以读到，通常是权限问题。
+If `sudo` works, the issue is usually permissions.
 
-串口设备常见处理：
+For serial devices:
 
 ```bash
 ls -l /dev/ttyUSB* /dev/ttyACM* 2>/dev/null
 sudo usermod -aG dialout $USER
 ```
 
-退出 WSL 后重新进入，或执行：
+Exit WSL and open it again, or run:
 
 ```bash
 newgrp dialout
 ```
 
-libusb/raw USB 设备可以添加 udev 规则。先找 VID/PID：
+For libusb/raw USB devices, add a `udev` rule. First find the VID/PID:
 
 ```bash
 lsusb
 ```
 
-然后替换下面示例里的 `2341` 和 `0043`：
+Then replace `2341` and `0043` in this example:
 
 ```bash
 sudo tee /etc/udev/rules.d/99-usb-wsl.rules <<'EOF'
@@ -79,27 +81,27 @@ sudo udevadm control --reload-rules
 sudo udevadm trigger
 ```
 
-如果 `udev` 不工作，可以在 `/etc/wsl.conf` 中启用 systemd：
+If `udev` does not work, enable systemd in `/etc/wsl.conf`:
 
 ```ini
 [boot]
 systemd=true
 ```
 
-然后在 Windows PowerShell 中执行：
+Then run this in Windows PowerShell:
 
 ```powershell
 wsl --shutdown
 ```
 
-## 安全与隐私
+## Security And Privacy
 
-项目中没有包含本机用户名、绝对路径、GitHub 凭据、设备序列号或其他私密配置。启动脚本使用自身目录 `%~dp0` 定位 PowerShell 脚本，可以移动到其他目录使用。
+This project does not include local usernames, absolute paths, GitHub credentials, device serial numbers, or other private configuration. The launcher uses its own directory (`%~dp0`) to locate the PowerShell script, so the tool can be moved to another directory.
 
-## 依赖
+## Requirements
 
 - Windows 10/11
 - WSL2
-- PowerShell 5.1 或更新版本
+- PowerShell 5.1 or later
 - `usbipd-win`
-- `winget`，仅用于工具内一键安装 `usbipd-win`
+- `winget`, only for the one-click `usbipd-win` installation inside the tool
