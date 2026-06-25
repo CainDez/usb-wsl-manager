@@ -79,6 +79,8 @@ function Invoke-ProcessCommand {
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [Text.Encoding]::UTF8
+    $psi.StandardErrorEncoding = [Text.Encoding]::UTF8
     $psi.CreateNoWindow = $true
 
     $process = New-Object System.Diagnostics.Process
