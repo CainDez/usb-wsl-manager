@@ -194,6 +194,34 @@ function Get-UsbipdDevices {
     return ConvertFrom-UsbipdListOutput -Text $result.StdOut
 }
 
+function Wait-UsbDevicePresent {
+    param(
+        [Parameter(Mandatory = $true)][string] $BusId,
+        [int] $MaxAttempts = 8,
+        [int] $SleepMilliseconds = 250,
+        [scriptblock] $DeviceProvider = { Get-UsbipdDevices }
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            $devices = @(& $DeviceProvider)
+            if ($devices | Where-Object { $_.BusId -eq $BusId }) {
+                return $true
+            }
+        } catch {
+            if ($attempt -eq $MaxAttempts) {
+                return $false
+            }
+        }
+
+        if ($attempt -lt $MaxAttempts -and $SleepMilliseconds -gt 0) {
+            Start-Sleep -Milliseconds $SleepMilliseconds
+        }
+    }
+
+    return $false
+}
+
 function Invoke-UsbipdAction {
     param(
         [Parameter(Mandatory = $true)][string[]] $Arguments,
@@ -427,7 +455,8 @@ function Invoke-SelectedDeviceAction {
     param(
         [Parameter(Mandatory = $true)][string] $ActionName,
         [Parameter(Mandatory = $true)][string[]] $Arguments,
-        [switch] $RequiresAdmin
+        [switch] $RequiresAdmin,
+        [string] $WaitForBusIdBeforeRefresh
     )
 
     try {
@@ -439,6 +468,10 @@ function Invoke-SelectedDeviceAction {
                 Add-Log $result.StdOut
             }
             Add-Log "$ActionName 完成。"
+            if (-not [string]::IsNullOrWhiteSpace($WaitForBusIdBeforeRefresh)) {
+                Add-Log "等待设备 $WaitForBusIdBeforeRefresh 重新出现在列表中。"
+                [void](Wait-UsbDevicePresent -BusId $WaitForBusIdBeforeRefresh)
+            }
             Refresh-UsbList
             return
         }
@@ -524,7 +557,7 @@ $attachButton.Add_Click({
 $detachButton.Add_Click({
     $device = Get-SelectedUsbDevice
     if ($null -eq $device) { return }
-    Invoke-SelectedDeviceAction -ActionName '从 WSL 断开' -Arguments @('detach', '--busid', $device.BusId)
+    Invoke-SelectedDeviceAction -ActionName '从 WSL 断开' -Arguments @('detach', '--busid', $device.BusId) -WaitForBusIdBeforeRefresh $device.BusId
 })
 
 $form.Add_Shown({
