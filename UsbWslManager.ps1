@@ -47,6 +47,40 @@ function Test-IsAdministrator {
     return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 }
 
+function Get-ManagerScriptLaunchArguments {
+    param([Parameter(Mandatory = $true)][string] $ScriptPath)
+
+    return @(
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-WindowStyle',
+        'Hidden',
+        '-STA',
+        '-File',
+        "`"$ScriptPath`""
+    )
+}
+
+function Start-ManagerScript {
+    param(
+        [Parameter(Mandatory = $true)][string] $ScriptPath,
+        [switch] $Elevated
+    )
+
+    $startArgs = @{
+        FilePath     = 'powershell.exe'
+        WindowStyle  = 'Hidden'
+        ArgumentList = Get-ManagerScriptLaunchArguments -ScriptPath $ScriptPath
+    }
+
+    if ($Elevated) {
+        $startArgs.Verb = 'RunAs'
+    }
+
+    Start-Process @startArgs
+}
+
 function Join-CommandArguments {
     param([Parameter(Mandatory = $true)][string[]] $Arguments)
 
@@ -183,19 +217,39 @@ function Invoke-UsbipdAction {
     return Invoke-ProcessCommand -FilePath 'usbipd' -Arguments $Arguments
 }
 
+function Get-ConnectUsbDevicePlan {
+    param([Parameter(Mandatory = $true)] $Device)
+
+    $steps = @()
+
+    if ($Device.State -eq 'Not shared') {
+        $steps += [pscustomobject]@{
+            ActionName    = '共享设备'
+            Arguments     = @('bind', '--busid', $Device.BusId)
+            RequiresAdmin = $true
+        }
+    }
+
+    $steps += [pscustomobject]@{
+        ActionName    = '连接到 WSL'
+        Arguments     = @('attach', '--wsl', '--busid', $Device.BusId)
+        RequiresAdmin = $false
+    }
+
+    return ,@($steps)
+}
+
 if ($env:USB_WSL_MANAGER_TEST_IMPORT -eq '1') {
     return
 }
 
+if (-not (Test-IsAdministrator)) {
+    Start-ManagerScript -ScriptPath $PSCommandPath -Elevated
+    exit
+}
+
 if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
-    Start-Process -FilePath 'powershell.exe' -ArgumentList @(
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-STA',
-        '-File',
-        "`"$PSCommandPath`""
-    )
+    Start-ManagerScript -ScriptPath $PSCommandPath
     exit
 }
 
@@ -294,7 +348,7 @@ WSL 连接与权限说明
 Windows 侧：
 1. 首次使用可点击“安装 usbipd-win”。安装后建议执行一次：wsl --update，然后 wsl --shutdown。
 2. 点击“刷新列表”，选择 USB 设备。
-3. 首次给 WSL 使用该设备：先“共享 / bind”，再“连接到 WSL”。
+3. 点击“连接到 WSL”；如果设备尚未共享，工具会先自动执行“共享 / bind”。
 4. 重启电脑或 WSL 后，通常只需要重新“连接到 WSL”；bind 一般会保留。
 5. 用完后点击“从 WSL 断开”。如果不想再允许共享，点击“取消共享”。
 
@@ -332,7 +386,7 @@ function Add-Log {
 function Update-Status {
     $versionText = Get-UsbipdVersionText
     $adminText = if (Test-IsAdministrator) { '管理员' } else { '普通用户' }
-    $statusLabel.Text = "usbipd: $versionText    当前权限: $adminText    提示: bind/unbind/安装需要管理员权限，工具会自动弹出 UAC。"
+    $statusLabel.Text = "usbipd: $versionText    当前权限: $adminText    提示: 工具启动时会请求管理员权限，便于直接执行 bind/unbind/安装。"
 }
 
 function Refresh-UsbList {
@@ -400,6 +454,37 @@ function Invoke-SelectedDeviceAction {
     }
 }
 
+function Invoke-SelectedDeviceActionPlan {
+    param(
+        [Parameter(Mandatory = $true)] [object[]] $Steps
+    )
+
+    try {
+        foreach ($step in $Steps) {
+            Add-Log "执行：usbipd $(Join-CommandArguments -Arguments $step.Arguments)"
+            $result = Invoke-UsbipdAction -Arguments $step.Arguments -RequiresAdmin:$step.RequiresAdmin
+
+            if ($result.ExitCode -ne 0) {
+                $message = $result.StdErr
+                if ([string]::IsNullOrWhiteSpace($message)) {
+                    $message = $result.StdOut
+                }
+                throw "$($step.ActionName) 失败：$message"
+            }
+
+            if (-not [string]::IsNullOrWhiteSpace($result.StdOut)) {
+                Add-Log $result.StdOut
+            }
+            Add-Log "$($step.ActionName) 完成。"
+        }
+
+        Refresh-UsbList
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, '连接到 WSL', 'OK', 'Warning') | Out-Null
+        Add-Log "连接到 WSL 失败：$($_.Exception.Message)"
+    }
+}
+
 $installButton.Add_Click({
     try {
         if (-not (Test-CommandAvailable -Name 'winget')) {
@@ -433,7 +518,7 @@ $unbindButton.Add_Click({
 $attachButton.Add_Click({
     $device = Get-SelectedUsbDevice
     if ($null -eq $device) { return }
-    Invoke-SelectedDeviceAction -ActionName '连接到 WSL' -Arguments @('attach', '--wsl', '--busid', $device.BusId)
+    Invoke-SelectedDeviceActionPlan -Steps (Get-ConnectUsbDevicePlan -Device $device)
 })
 
 $detachButton.Add_Click({

@@ -26,15 +26,16 @@ Run-UsbWslManager.bat
 powershell.exe -NoProfile -ExecutionPolicy Bypass -STA -File ".\UsbWslManager.ps1"
 ```
 
+工具启动时会请求管理员权限，用于执行 `usbipd bind`、`usbipd unbind` 和安装操作。
+
 ## 常见流程
 
 1. 打开工具。
 2. 如果没有安装 `usbipd-win`，点击“安装 usbipd-win”。
 3. 点击“刷新列表”。
 4. 选择目标 USB 设备。
-5. 首次使用时点击“共享 / bind”。
-6. 点击“连接到 WSL”。
-7. 在 WSL 中执行 `lsusb` 确认设备可见。
+5. 点击“连接到 WSL”；如果设备尚未共享，工具会先自动执行 `usbipd bind`。
+6. 在 WSL 中执行 `lsusb` 确认设备可见。
 
 重启电脑、重启 WSL 或设备拔插后，通常只需要重新执行“连接到 WSL”。`bind` 状态一般会保留。
 
